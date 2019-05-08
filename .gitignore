@@ -1,0 +1,15 @@
+gurobi.log
+.DS_Store
+*.pyc
+*.csv
+#.json
+
+# exclude content from the following folder but keep folder structure
+inputs/*
+outputs/*
+others/*
+
+# exception to the rule
+!inputs/.gitkeep
+!outputs/.gitkeep
+!others/.gitkeep
