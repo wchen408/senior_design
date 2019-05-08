@@ -36,11 +36,30 @@ class info_retriver():
 		self.db = self.client[db_name]
 		self.coll = self.db[coll_name]
 
+		# retrieve origin and destination for this mcnf 
+		# and store as class variable for pulling
+		# inventory and packout information
+		self.get_orig_dest()
+
 		# TEMP Func: read packout csv file
 		self.read_packout_csv()
 
 		# trigger lane_info_retrival ht 
 		self.lane_info_retrival()
+
+	'''
+	retrieve origin and destination for this mcnf 
+	and store as class variable for pulling
+	inventory and packout information
+	'''
+	def get_orig_dest(self):
+
+		with open(self.INIT_MODE_ASSIGN_FILE) as csv_file:
+			reader = csv.DictReader(csv_file)
+			for row in reader:
+				self.orig = row['Origin'].upper()
+				self.dest = row['Destination'].upper()
+				break
 
 	'''
 	TEMP FUNCTION
@@ -55,6 +74,12 @@ class info_retriver():
 			for row in csv_reader:
 				org, cpn, date, quantity = row
 				date = self.toDate(datetime.strptime(date, "%m/%d/%Y"))
+
+				# ignore record if packout doesn't belong to the target
+				# inventoryOrg
+
+				if org.upper() != self.orig or org.upper() != self.dest:
+					continue
 
 				# some quantities are ill formatted
 				# strip illegal char and convert to integer
@@ -109,7 +134,7 @@ class info_retriver():
 		# from the initial inventory snapshot
 		init_date = int(date.strftime('%Y%m%d'))
 		init_inv_ss = self.coll\
-			.find({'itemNumber': cpn, 'version': init_date}, {'siteOH': 1, 'hubOH': 1, 'supply': 1})\
+			.find({'itemNumber': cpn, 'version': init_date, 'inventoryOrg': self.dest}, {'siteOH': 1, 'hubOH': 1, 'supply': 1})\
 			.sort('version', pymongo.ASCENDING)
 
 		# if snapshot on the day doesn't exist, retreive the closet snapshot before that
@@ -119,7 +144,7 @@ class info_retriver():
 				resorting to the latest previous record", init_date, cpn)
 
 			init_inv_ss = self.coll\
-				.find({'itemNumber': cpn, 'version': {"$lt": init_date}}, {'siteOH': 1, 'hubOH': 1})\
+				.find({'itemNumber': cpn, 'inventoryOrg': self.dest, 'version': {"$lt": init_date}}, {'siteOH': 1, 'hubOH': 1})\
 				.sort('version', pymongo.DESCENDING)
 
 			if init_inv_ss.count() == 0:
@@ -143,7 +168,7 @@ class info_retriver():
 
 		date_to_int = int(date.strftime('%Y%m%d'))
 		inv_ss = self.coll\
-			.find({'itemNumber': cpn, 'version': date_to_int}, {'supply': 1, 'currentWeekPackOuts': 1, 'demand': 1})\
+			.find({'itemNumber': cpn, 'inventoryOrg': self.dest, 'version': date_to_int}, {'supply': 1, 'currentWeekPackOuts': 1, 'demand': 1})\
 			.sort('version', pymongo.ASCENDING)
 
 
@@ -154,7 +179,7 @@ class info_retriver():
 				resorting to the latest previous record", date_to_int, cpn)
 
 			inv_ss = self.coll\
-				.find({'itemNumber': cpn, 'version': {"$lt": date_to_int}}, {'supply': 1, 'currentWeekPackOuts': 1, 'demand': 1})\
+				.find({'itemNumber': cpn, 'inventoryOrg': self.dest, 'version': {"$lt": date_to_int}}, {'supply': 1, 'currentWeekPackOuts': 1, 'demand': 1})\
 				.sort('version', pymongo.DESCENDING)
 
 		if inv_ss.count() == 0:
