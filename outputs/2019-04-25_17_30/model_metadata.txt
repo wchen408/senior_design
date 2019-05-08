@@ -1,5 +1,0 @@
-####### Model Objective Weights #######
-		ei_weight: 0.200000
-		ss_weight: 0.600000
-		trans_weight: 0.030000
-		ud_weight: 0.170000
